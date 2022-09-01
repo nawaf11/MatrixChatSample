@@ -81,7 +81,7 @@ class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidVie
                             Log.d("TimeLineListener", "onTimelineUpdated  type of $i ==> ${event.type}, isTextMessage: ${event.isTextMessage()} , content.size ${event.content?.size}")
                             if(event.isTextMessage()) {
                                 Log.d("TimeLineListener", "TextMessage Item, $i")
-                                textEventList.add("TextMessage Item, $i,  Sender ==> ${event.sendState.name}")
+//                                textEventList.add("TextMessage Item, $i,  Sender ==> ${event.sendState.name}")
                                 val c=event.senderId?.let {
                                     currentSession.roomService().getRoomMember(it, item.roomId) }?.toMatrixItem()
                                 textEventList.add(" ${c?.displayName + ":"}${item.getLastMessageContent()?.body}")
