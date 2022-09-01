@@ -27,13 +27,23 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.matrixchat.matrix.MatrixSessionHolder
 import com.example.matrixchat.ui.chat_app.MatrixLoginPage
 import com.example.matrixchat.ui.chat_app.MatrixMainPage
+import com.example.matrixchat.ui.chat_app.MatrixRoomDetails
 import com.example.matrixchat.ui.theme.MatrixChatTheme
+
+object NavHostPages {
+    const val matrix_login_page = "matrix_login_page"
+    const val matrix_main_page = "matrix_main_page"
+    const val matrix_room_details = "matrix_room_details"
+
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -61,11 +71,19 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
 
-                    val startDestination : String = if(MatrixSessionHolder.currentSession == null) "matrix_login_page" else "matrix_main_page"
+                    val startDestination : String = if(MatrixSessionHolder.currentSession == null) NavHostPages.matrix_login_page else NavHostPages.matrix_main_page
 
                     NavHost(navController = navController, startDestination = startDestination) {
-                        composable("matrix_login_page") { MatrixLoginPage(navController) }
-                        composable("matrix_main_page") { MatrixMainPage(/*...*/) }
+                        composable(NavHostPages.matrix_login_page) { MatrixLoginPage(navController) }
+                        composable(NavHostPages.matrix_main_page) { MatrixMainPage(navController) }
+                        composable(NavHostPages.matrix_room_details + "/{roomId}",
+                            arguments = listOf(navArgument("roomId") { type = NavType.StringType })) {
+                            val roomId = it.arguments?.getString("roomId")
+                            if(roomId != null && MatrixSessionHolder.currentSession != null)
+                                MatrixRoomDetails(navController, MatrixSessionHolder.currentSession!!, roomId)
+                        }
+
+
                         /*...*/
                     }
 

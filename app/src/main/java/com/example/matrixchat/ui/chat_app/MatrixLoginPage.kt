@@ -25,6 +25,7 @@ import com.example.matrixchat.matrix.MatrixUtils
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.*
 import androidx.navigation.NavController
+import com.example.matrixchat.NavHostPages
 
 
 class MatrixLoginPageViewModel constructor(context : Application) : AndroidViewModel(context) {
@@ -86,7 +87,7 @@ fun MatrixLoginPage(navController: NavController,
             return@LaunchedEffect
 
         Toast.makeText(context, "Successfully Logged In", Toast.LENGTH_SHORT).show()
-        navController.navigate("matrix_main_page")
+        navController.navigate(NavHostPages.matrix_main_page)
     }
 
     LaunchedEffect(showErrorMessage) {
