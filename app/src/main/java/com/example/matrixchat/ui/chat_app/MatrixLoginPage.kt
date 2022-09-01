@@ -75,8 +75,8 @@ class MatrixLoginPageViewModel constructor(context : Application) : AndroidViewM
 fun MatrixLoginPage(navController: NavController,
                     viewModel : MatrixLoginPageViewModel = viewModel()) {
 
-    var username by remember { mutableStateOf(TextFieldValue("nawaf11")) }
-    var password by remember { mutableStateOf(TextFieldValue("ahmedXv47bC7*")) }
+    var username by remember { mutableStateOf(TextFieldValue("")) }
+    var password by remember { mutableStateOf(TextFieldValue("")) }
     val context = LocalContext.current
 
     val showErrorMessage by viewModel.showErrorMessage
