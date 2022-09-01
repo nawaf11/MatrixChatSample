@@ -33,6 +33,8 @@ import org.matrix.android.sdk.api.session.room.Room
 import org.matrix.android.sdk.api.session.room.timeline.Timeline
 import org.matrix.android.sdk.api.session.room.timeline.TimelineEvent
 import org.matrix.android.sdk.api.session.room.timeline.TimelineSettings
+import org.matrix.android.sdk.api.session.room.timeline.getLastMessageContent
+import org.matrix.android.sdk.api.util.toMatrixItem
 
 
 class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidViewModel(context) {
@@ -80,6 +82,10 @@ class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidVie
                             if(event.isTextMessage()) {
                                 Log.d("TimeLineListener", "TextMessage Item, $i")
                                 textEventList.add("TextMessage Item, $i,  Sender ==> ${event.sendState.name}")
+                                val c=event.senderId?.let {
+                                    currentSession.roomService().getRoomMember(it, item.roomId) }?.toMatrixItem()
+                                textEventList.add(" ${c?.displayName + ":"}${item.getLastMessageContent()?.body}")
+
 //                                event.content?.values?.forEachIndexed { i,  mValue ->
 //                                    Log.d("TimeLineListener", "onTimelineUpdated  $i ==> value = ${mValue.toString()} ")
 //                                }
@@ -128,7 +134,6 @@ fun MatrixRoomDetails(navController: NavController, currentSession : Session, ro
                             Box(modifier = Modifier.padding(10.dp)) {
                                 Text(text = messageListData[index], color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(0.dp))
                             }
-
                         }
 
                     }
