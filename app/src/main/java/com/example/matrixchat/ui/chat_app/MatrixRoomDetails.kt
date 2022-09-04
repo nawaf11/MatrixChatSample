@@ -3,19 +3,13 @@ package com.example.matrixchat.ui.chat_app
 import android.app.Application
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
@@ -25,19 +19,21 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import kotlinx.coroutines.GlobalScope
+import com.example.matrixchat.NavHostPages
 import kotlinx.coroutines.launch
+import org.matrix.android.sdk.api.query.QueryStateEventValue
 import org.matrix.android.sdk.api.session.Session
+import org.matrix.android.sdk.api.session.events.model.EventType
 import org.matrix.android.sdk.api.session.events.model.isTextMessage
+import org.matrix.android.sdk.api.session.getRoom
 import org.matrix.android.sdk.api.session.room.Room
-import org.matrix.android.sdk.api.session.room.timeline.Timeline
-import org.matrix.android.sdk.api.session.room.timeline.TimelineEvent
-import org.matrix.android.sdk.api.session.room.timeline.TimelineSettings
-import org.matrix.android.sdk.api.session.room.timeline.getLastMessageContent
+import org.matrix.android.sdk.api.session.room.getStateEvent
+import org.matrix.android.sdk.api.session.room.model.message.MessageType
+import org.matrix.android.sdk.api.session.room.timeline.*
 import org.matrix.android.sdk.api.util.toMatrixItem
 
 
-class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidViewModel(context) {
+class MatrixRoomDetailsViewModel constructor(context: Application) : AndroidViewModel(context) {
 
     private val timelineListener : Timeline.Listener? = null
 
@@ -73,24 +69,27 @@ class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidVie
                     Log.d("TimeLineListener", "onTimelineUpdated Called ${snapshot.size}")
 
                     val textEventList = mutableListOf<String>()
-
                     viewModelScope.launch {
-
+                        try {
                         snapshot.forEachIndexed { i, item ->
-                            val event = currentSession.eventService().getEvent(room.roomId, snapshot[i].eventId)
+                            val event = currentSession.eventService()
+                                .getEvent(room.roomId, snapshot[i].eventId)
                             Log.d("TimeLineListener", "onTimelineUpdated  type of $i ==> ${event.type}, isTextMessage: ${event.isTextMessage()} , content.size ${event.content?.size}")
-                            if(event.isTextMessage()) {
+
+                            if (event.isTextMessage()) {
                                 Log.d("TimeLineListener", "TextMessage Item, $i")
 //                                textEventList.add("TextMessage Item, $i,  Sender ==> ${event.sendState.name}")
-                                val c=event.senderId?.let {
-                                    currentSession.roomService().getRoomMember(it, item.roomId) }?.toMatrixItem()
+                                val c = event.senderId?.let {
+                                    currentSession.roomService().getRoomMember(it, item.roomId)
+                                }?.toMatrixItem()
                                 textEventList.add(" ${c?.displayName + ":"}${item.getLastMessageContent()?.body}")
 
-//                                event.content?.values?.forEachIndexed { i,  mValue ->
-//                                    Log.d("TimeLineListener", "onTimelineUpdated  $i ==> value = ${mValue.toString()} ")
-//                                }
                             }
                         }
+                        }catch (failure: Throwable) {
+                            Log.d("error w",failure.message.toString())
+                                return@launch
+                            }
 
                         messagesList.value = textEventList
                         Log.d("TimeLineListener", "messagesList ==> ${textEventList.size}")
@@ -105,11 +104,19 @@ class MatrixRoomDetailsViewModel constructor(context : Application) : AndroidVie
 }
 
 @Composable
-fun MatrixRoomDetails(navController: NavController, currentSession : Session, roomId : String, viewModel : MatrixRoomDetailsViewModel = viewModel()) {
+fun MatrixRoomDetails(
+    navController: NavController,
+    currentSession: Session,
+    roomId: String,
+    viewModel: MatrixRoomDetailsViewModel = viewModel()
+) {
+    val value = remember {
+        mutableStateOf("")
+    }
 
     val roomDetails = currentSession.roomService().getRoom(roomId)
     val messageListData by viewModel.messagesList
-
+    val context= rememberCoroutineScope()
     roomDetails?.let {
         viewModel.setupRoomListener(currentSession, roomDetails) // Timeline Listner
 
@@ -118,24 +125,66 @@ fun MatrixRoomDetails(navController: NavController, currentSession : Session, ro
         Surface(modifier = Modifier.fillMaxWidth()) {
 
             Column {
-                Text(text = "Room-Details:\n\nnumberOfJoinedMembers == > $numberOfJoinedMembers",
+                Text(
+                    text = "Room-Details:\n\nnumberOfJoinedMembers == > $numberOfJoinedMembers",
                     Modifier.padding(6.dp),
                     fontSize = 16.sp,
-                    textAlign = TextAlign.Start)
+                    textAlign = TextAlign.Start
+                )
 
 
                 LazyColumn() {
 
                     items(count = messageListData.size) { index ->
-                        Box(modifier = Modifier
-                            .padding(10.dp)
-                            .background(Color.Gray)) {
+                        Box(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .background(Color.Gray)
+                        ) {
 
                             Box(modifier = Modifier.padding(10.dp)) {
-                                Text(text = messageListData[index], color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(0.dp))
+                                Text(
+                                    text = messageListData[index],
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.padding(0.dp)
+                                )
                             }
                         }
 
+                    }
+                    item {
+                        TextField(modifier = Modifier
+                            .padding(horizontal = 6.dp)
+                            .fillMaxWidth(),
+                            value = value.value,
+                            onValueChange = {
+                                value.value = it
+                            })
+                        Button(onClick = {
+                            if(value.value.isNotEmpty()) {
+                                roomDetails.sendService().sendTextMessage(
+                                    text = value.value,
+                                    msgType = MessageType.MSGTYPE_TEXT
+                                )
+                            }
+                        }) {
+                            Text("Send")
+                        }
+                        Button(onClick = {
+                            context.launch {
+                                try {
+                                    currentSession.signOutService().signOut(false)
+                                    Log.d("logout","displayAlreadyLoginPopup(): logout succeeded")
+//                                    sessionHolder.clearActiveSession()
+                                    navController.navigate(NavHostPages.matrix_login_page)
+                                } catch (failure: Throwable) {
+                                    Log.d("logout","displayAlreadyLoginPopup(): logout failed${failure.message.toString()}")
+
+                                }                            }
+                        }) {
+                            Text("sign out")
+                        }
                     }
 
                 }
